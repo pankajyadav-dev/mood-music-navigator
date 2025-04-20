@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 
 declare global {
@@ -9,12 +9,16 @@ declare global {
   }
 }
 
+// Use module-level variables to persist player state across navigation
 let apiLoaded = false;
 let apiLoading = false;
+let playerInstance: any = null;
+let playerReady = false;
 
 const YouTubePlayer: React.FC = () => {
-  const playerRef = useRef<any>(null);
-  const playerReadyRef = useRef<boolean>(false);
+  const playerRef = useRef<any>(playerInstance);
+  const playerReadyRef = useRef<boolean>(playerReady);
+  const [isApiReady, setIsApiReady] = useState(apiLoaded);
   const { 
     currentVideo, 
     isPlaying, 
@@ -39,7 +43,8 @@ const YouTubePlayer: React.FC = () => {
         window.onYouTubeIframeAPIReady = () => {
           apiLoaded = true;
           apiLoading = false;
-          if (currentVideo?.id) {
+          setIsApiReady(true);
+          if (currentVideo?.id && !playerRef.current) {
             initPlayer();
           }
         };
@@ -50,27 +55,23 @@ const YouTubePlayer: React.FC = () => {
 
     loadAPI();
     
+    // Don't destroy player on unmount - this is key to persist state
     return () => {
-      if (playerRef.current && playerRef.current.destroy) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-        playerReadyRef.current = false;
-      }
+      // Keep references to player state
+      playerInstance = playerRef.current;
+      playerReady = playerReadyRef.current;
     };
-  }, []);
+  }, [currentVideo]);
 
   // Initialize player
   const initPlayer = () => {
     if (window.YT && window.YT.Player && currentVideo?.id) {
       if (playerRef.current) {
-        if (playerRef.current.destroy) {
-          playerRef.current.destroy();
-        }
         playerRef.current = null;
         playerReadyRef.current = false;
       }
 
-      playerRef.current = new window.YT.Player('youtube-player', {
+      const newPlayer = new window.YT.Player('youtube-player', {
         height: '0',
         width: '0',
         videoId: currentVideo.id,
@@ -88,14 +89,28 @@ const YouTubePlayer: React.FC = () => {
           onError: onPlayerError
         }
       });
+      
+      playerRef.current = newPlayer;
+      playerInstance = newPlayer;
     }
   };
 
   // Handle player ready event
   const onPlayerReady = (event: any) => {
     playerReadyRef.current = true;
+    playerReady = true;
+    
+    // Only call setVolume when the player is fully ready
     event.target.setVolume(volume);
+    
+    // Resume from previously stored position
+    if (progress > 0) {
+      event.target.seekTo(progress);
+    }
+    
     setDuration(event.target.getDuration());
+    
+    // Only play if isPlaying is true
     if (isPlaying) {
       event.target.playVideo();
     }
@@ -130,7 +145,7 @@ const YouTubePlayer: React.FC = () => {
       // Use cueVideoById instead of loadVideoById for more stable behavior
       playerRef.current.cueVideoById({
         videoId: currentVideo.id,
-        startSeconds: 0
+        startSeconds: progress > 0 ? progress : 0
       });
       
       if (isPlaying) {
@@ -185,7 +200,7 @@ const YouTubePlayer: React.FC = () => {
     return () => clearInterval(interval);
   };
 
-  return <div id="youtube-player" className="hidden" />;
+  return <div id="youtube-player" style={{ display: 'none' }} />;
 };
 
 export default YouTubePlayer;
