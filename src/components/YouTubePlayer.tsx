@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+
+import React, { useEffect, useRef, useState } from 'react';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 
 declare global {
@@ -17,6 +18,7 @@ let playerReady = false;
 const YouTubePlayer: React.FC = () => {
   const playerRef = useRef<any>(playerInstance);
   const playerReadyRef = useRef<boolean>(playerReady);
+  const [isApiReady, setIsApiReady] = useState(apiLoaded);
   const { 
     currentVideo, 
     isPlaying, 
@@ -41,6 +43,7 @@ const YouTubePlayer: React.FC = () => {
         window.onYouTubeIframeAPIReady = () => {
           apiLoaded = true;
           apiLoading = false;
+          setIsApiReady(true);
           if (currentVideo?.id && !playerRef.current) {
             initPlayer();
           }
@@ -96,6 +99,8 @@ const YouTubePlayer: React.FC = () => {
   const onPlayerReady = (event: any) => {
     playerReadyRef.current = true;
     playerReady = true;
+    
+    // Only call setVolume when the player is fully ready
     event.target.setVolume(volume);
     
     // Resume from previously stored position
@@ -104,6 +109,8 @@ const YouTubePlayer: React.FC = () => {
     }
     
     setDuration(event.target.getDuration());
+    
+    // Only play if isPlaying is true
     if (isPlaying) {
       event.target.playVideo();
     }
@@ -193,7 +200,7 @@ const YouTubePlayer: React.FC = () => {
     return () => clearInterval(interval);
   };
 
-  return <div id="youtube-player" />;
+  return <div id="youtube-player" style={{ display: 'none' }} />;
 };
 
 export default YouTubePlayer;
