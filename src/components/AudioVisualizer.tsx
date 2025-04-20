@@ -30,17 +30,6 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
           }}
         ></div>
       ))}
-
-      <style jsx>{`
-        @keyframes audioVisualizerBar {
-          0% {
-            transform: scaleY(0.3);
-          }
-          100% {
-            transform: scaleY(1);
-          }
-        }
-      `}</style>
     </div>
   );
 };
