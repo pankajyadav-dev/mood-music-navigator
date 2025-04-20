@@ -21,8 +21,9 @@ const YouTubePlayer: React.FC = () => {
     volume, 
     progress, 
     setProgress, 
-    setDuration, 
-    playNext 
+    setDuration,
+    playNext,
+    queue 
   } = useMusicPlayer();
   
   // Initialize YouTube API
@@ -103,7 +104,10 @@ const YouTubePlayer: React.FC = () => {
   // Handle player state changes
   const onPlayerStateChange = (event: any) => {
     if (event.data === window.YT.PlayerState.ENDED) {
-      playNext();
+      // When current song ends, play next song if available
+      if (queue.length > 0) {
+        playNext();
+      }
     }
     
     if (event.data === window.YT.PlayerState.PLAYING) {
